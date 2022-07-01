@@ -36,6 +36,7 @@ func MakeHTTPRoute(
 	ctx context.Context,
 	ing *netv1alpha1.Ingress,
 	rule *netv1alpha1.IngressRule,
+	tlsGw *gatewayv1alpha2.Gateway,
 ) (*gatewayv1alpha2.HTTPRoute, error) {
 
 	visibility := ""
@@ -55,13 +56,14 @@ func MakeHTTPRoute(
 			}),
 			OwnerReferences: []metav1.OwnerReference{*kmeta.NewControllerRef(ing)},
 		},
-		Spec: makeHTTPRouteSpec(ctx, rule),
+		Spec: makeHTTPRouteSpec(ctx, rule, tlsGw),
 	}, nil
 }
 
 func makeHTTPRouteSpec(
 	ctx context.Context,
 	rule *netv1alpha1.IngressRule,
+	tlsGw *gatewayv1alpha2.Gateway,
 ) gatewayv1alpha2.HTTPRouteSpec {
 
 	hostnames := make([]gatewayv1alpha2.Hostname, 0, len(rule.Hosts))
@@ -74,17 +76,22 @@ func makeHTTPRouteSpec(
 	gatewayConfig := config.FromContext(ctx).Gateway
 	namespacedNameGateway := gatewayConfig.Gateways[rule.Visibility].Gateway
 
-	gatewayRef := gatewayv1alpha2.ParentRef{
+	gatewayRefs := []gatewayv1alpha2.ParentRef{{
 		Namespace: namespacePtr(gatewayv1alpha2.Namespace(namespacedNameGateway.Namespace)),
 		Name:      gatewayv1alpha2.ObjectName(namespacedNameGateway.Name),
+	}}
+
+	if tlsGw != nil {
+		gatewayRefs = append(gatewayRefs, gatewayv1alpha2.ParentRef{
+			Namespace: namespacePtr(gatewayv1alpha2.Namespace(tlsGw.Namespace)),
+			Name:      gatewayv1alpha2.ObjectName(tlsGw.Name),
+		})
 	}
 
 	return gatewayv1alpha2.HTTPRouteSpec{
-		Hostnames: hostnames,
-		Rules:     rules,
-		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: []gatewayv1alpha2.ParentRef{
-			gatewayRef,
-		}},
+		Hostnames:       hostnames,
+		Rules:           rules,
+		CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{ParentRefs: gatewayRefs},
 	}
 }
 

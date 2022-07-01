@@ -43,4 +43,4 @@ rules:
     verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]
   - apiGroups: ["gateway.networking.k8s.io"]
     resources: ["gateways"]
-    verbs: ["get", "list", "update", "patch", "watch"]
+    verbs: ["get", "list", "create", "update", "delete", "patch", "watch"]

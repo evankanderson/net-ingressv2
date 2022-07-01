@@ -434,7 +434,7 @@ func httpRoute(t *testing.T, i *v1alpha1.Ingress, opts ...HTTPRouteOption) runti
 	t.Helper()
 	ingress.InsertProbe(i)
 	ctx := (&testConfigStore{config: defaultConfig}).ToContext(context.Background())
-	httpRoute, _ := resources.MakeHTTPRoute(ctx, i, &i.Spec.Rules[0])
+	httpRoute, _ := resources.MakeHTTPRoute(ctx, i, &i.Spec.Rules[0], nil)
 	for _, opt := range opts {
 		opt(httpRoute)
 	}

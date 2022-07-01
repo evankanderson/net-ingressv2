@@ -423,7 +423,7 @@ func TestMakeHTTPRoute(t *testing.T) {
 				tcs := &testConfigStore{config: testConfig}
 				ctx := tcs.ToContext(context.Background())
 
-				route, err := MakeHTTPRoute(ctx, tc.ing, &rule)
+				route, err := MakeHTTPRoute(ctx, tc.ing, &rule, nil)
 				if err != nil {
 					t.Fatal("MakeHTTPRoute failed:", err)
 				}

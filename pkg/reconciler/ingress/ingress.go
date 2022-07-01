@@ -89,10 +89,27 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 
 	logger.Infof("Reconciling ingress: %#v", ing)
 
+	var tlsGw *gatewayv1alpha2.Gateway
+	if len(ing.Spec.TLS) > 0 {
+		var err error
+		logger.Infof("Reconciling gateway for %s/%s", ing.Namespace, ing.Name)
+		tlsGw, err = c.reconcileGateway(ctx, ing)
+		logger.Infof("Reconcile gateway: %+v", err)
+		if err != nil {
+			return err
+		}
+
+		// TODO: make reference grants
+		if err := c.reconcileTLS(ctx, ing, tlsGw); err != nil {
+			return err
+		}
+
+	}
+
 	for _, rule := range ing.Spec.Rules {
 		rule := rule
 
-		httproutes, err := c.reconcileHTTPRoute(ctx, ing, &rule)
+		httproutes, err := c.reconcileHTTPRoute(ctx, ing, &rule, tlsGw)
 		if err != nil {
 			return err
 		}
@@ -104,27 +121,31 @@ func (c *Reconciler) reconcileIngress(ctx context.Context, ing *v1alpha1.Ingress
 		}
 		logger.Infof("HTTPRoute successfully synced %v", httproutes)
 	}
+	/*
+		listeners := make([]*gatewayv1alpha2.Listener, 0, len(ing.Spec.TLS))
+		for _, tls := range ing.Spec.TLS {
+			tls := tls
 
-	listeners := make([]*gatewayv1alpha2.Listener, 0, len(ing.Spec.TLS))
-	for _, tls := range ing.Spec.TLS {
-		tls := tls
-
-		l, err := c.reconcileTLS(ctx, &tls, ing)
-		if err != nil {
-			return err
+			l, err := c.reconcileTLS(ctx, &tls, ing)
+			if err != nil {
+				return err
+			}
+			listeners = append(listeners, l...)
 		}
-		listeners = append(listeners, l...)
-	}
+		/*
+			if len(listeners) > 0 {
+				externalConfig := gatewayConfig.Gateways[v1alpha1.IngressVisibilityExternalIP]
+				_, err := c.reconcileGateway(ctx, ing, externalConfig.GatewayClass, externalConfig.Gateway.Namespace)
 
-	if len(listeners) > 0 {
-		// For now, we only reconcile the external visibility, because there's
-		// no way to provide TLS for internal listeners.
-		err := c.reconcileGatewayListeners(
-			ctx, listeners, ing, *gatewayConfig.Gateways[v1alpha1.IngressVisibilityExternalIP].Gateway)
-		if err != nil {
-			return err
-		}
-	}
+				// For now, we only reconcile the external visibility, because there's
+				// no way to provide TLS for internal listeners.
+				// err := c.reconcileGatewayListeners(
+				// 	ctx, listeners, ing, *gatewayConfig.Gateways[v1alpha1.IngressVisibilityExternalIP].Gateway)
+				if err != nil {
+					return err
+				}
+			}
+	*/
 
 	ready, err := c.statusManager.IsReady(ctx, before)
 	if err != nil {
